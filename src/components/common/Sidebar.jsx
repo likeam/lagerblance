@@ -15,11 +15,9 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <div className="w-64 bg-white border-l border-gray-200 h-screen sticky top-0 overflow-y-auto no-print">
+    <div className="w-72 bg-gray-600   border-l border-gray-200 h-screen sticky top-0 overflow-y-auto no-print">
       <div className="p-6 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-blue-600 urdu-text">
-          📦 نظام POS
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-100 urdu-text">POS</h1>
       </div>
       <nav className="p-3 space-y-1">
         {items.map((item) => (

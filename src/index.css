@@ -75,7 +75,7 @@
   border-radius: 12px;
   transition: all 0.2s ease;
   cursor: pointer;
-  color: #64748b;
+  color: white;
   font-weight: 500;
 }
 .sidebar-link:hover {
