@@ -15,7 +15,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <div className="w-72 bg-gray-600   border-l border-gray-200 h-screen sticky top-0 overflow-y-auto no-print">
+    <div className="w-72 bg-[#2F0BB8]   border-l border-gray-200 h-screen sticky top-0 overflow-y-auto no-print">
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-bold text-gray-100 urdu-text">POS</h1>
       </div>

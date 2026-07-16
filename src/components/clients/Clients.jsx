@@ -13,8 +13,6 @@ export default function Clients() {
     address: "",
     balance: "",
   });
-
-  // State for balance adjustment modal
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [balanceAmount, setBalanceAmount] = useState("");
@@ -104,7 +102,6 @@ export default function Clients() {
         </button>
       </div>
 
-      {/* Add/Edit Client Form */}
       {showAdd && (
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 fade-in">
           <h3 className="font-bold text-lg urdu-text mb-4">
@@ -240,7 +237,7 @@ export default function Clients() {
                   پتہ
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
-                  بیلنس
+                  بیلنس (کریڈٹ)
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
                   کل خریداری

@@ -41,7 +41,7 @@ function App() {
 
   return (
     <AppProvider>
-      <div className="flex min-h-screen bg-gray-400">
+      <div className="flex min-h-screen bg-[#DAA520]">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         <div className="flex-1 overflow-auto">{renderContent()}</div>
       </div>

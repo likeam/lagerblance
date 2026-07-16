@@ -19,6 +19,7 @@ export default function Purchases() {
     supplierId: "",
     items: [],
     date: Date.now(),
+    paymentType: "cash",
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [qty, setQty] = useState(1);
@@ -97,10 +98,12 @@ export default function Purchases() {
       items: form.items,
       subtotal,
       total: subtotal,
+      paymentType: form.paymentType,
       date: form.date || Date.now(),
     };
     await dbAdd(STORES.PURCHASES, data);
-    // Update product stock
+
+    // Update stock
     for (const item of form.items) {
       const prod = await dbGet(STORES.PRODUCTS, item.productId);
       if (prod) {
@@ -108,11 +111,26 @@ export default function Purchases() {
         await dbPut(STORES.PRODUCTS, prod);
       }
     }
+
+    // Update supplier balance if credit
+    if (form.paymentType === "credit") {
+      const supplierObj = await dbGet(STORES.SUPPLIERS, form.supplierId);
+      if (supplierObj) {
+        const newBalance = (supplierObj.balance || 0) + subtotal;
+        await dbPut(STORES.SUPPLIERS, { ...supplierObj, balance: newBalance });
+      }
+    }
+
     await refreshAll();
     setCurrentPurchase(data);
     setShowPrint(true);
     setShowAdd(false);
-    setForm({ supplierId: "", items: [], date: Date.now() });
+    setForm({
+      supplierId: "",
+      items: [],
+      date: Date.now(),
+      paymentType: "cash",
+    });
     setSelectedProduct(null);
     setQty(1);
     setPrice(0);
@@ -144,6 +162,14 @@ export default function Purchases() {
             </p>
             <p className="text-gray-500 urdu-text">
               سپلائر: {currentPurchase.supplierName}
+            </p>
+            <p className="text-gray-500 urdu-text">
+              ادائیگی کی قسم:{" "}
+              {currentPurchase.paymentType === "cash" ? "نقد" : "کریڈٹ"}
+            </p>
+            <p className="text-gray-500 urdu-text">
+              کل اشیاء:{" "}
+              {currentPurchase.items.reduce((sum, item) => sum + item.qty, 0)}
             </p>
           </div>
           <div className="border-t border-b py-3 my-4">
@@ -203,7 +229,12 @@ export default function Purchases() {
           className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold urdu-text hover:bg-blue-700 transition flex items-center gap-2"
           onClick={() => {
             setShowAdd(true);
-            setForm({ supplierId: "", items: [], date: Date.now() });
+            setForm({
+              supplierId: "",
+              items: [],
+              date: Date.now(),
+              paymentType: "cash",
+            });
             setSelectedProduct(null);
             setQty(1);
             setPrice(0);
@@ -230,8 +261,8 @@ export default function Purchases() {
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200 fade-in">
           <h3 className="font-bold text-lg urdu-text mb-4">نیا خریداری بل</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-1">
+            <div className="flex gap-4 flex-wrap">
+              <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm text-gray-600 urdu-text mb-1">
                   سپلائر *
                 </label>
@@ -270,9 +301,24 @@ export default function Purchases() {
                   }
                 />
               </div>
+              <div className="w-48">
+                <label className="block text-sm text-gray-600 urdu-text mb-1">
+                  ادائیگی کی قسم
+                </label>
+                <select
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none urdu-text"
+                  value={form.paymentType}
+                  onChange={(e) =>
+                    setForm({ ...form, paymentType: e.target.value })
+                  }
+                >
+                  <option value="cash">نقد</option>
+                  <option value="credit">کریڈٹ</option>
+                </select>
+              </div>
             </div>
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
+            <div className="flex gap-3 items-end flex-wrap">
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-sm text-gray-600 urdu-text mb-1">
                   پروڈکٹ
                 </label>
@@ -376,7 +422,12 @@ export default function Purchases() {
                 className="bg-gray-200 text-gray-700 px-8 py-2.5 rounded-xl font-bold urdu-text hover:bg-gray-300 transition"
                 onClick={() => {
                   setShowAdd(false);
-                  setForm({ supplierId: "", items: [], date: Date.now() });
+                  setForm({
+                    supplierId: "",
+                    items: [],
+                    date: Date.now(),
+                    paymentType: "cash",
+                  });
                   setSelectedProduct(null);
                   setQty(1);
                   setPrice(0);
@@ -404,6 +455,9 @@ export default function Purchases() {
                   تاریخ
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
+                  ادائیگی کی قسم
+                </th>
+                <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
                   آئٹمز
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
@@ -415,34 +469,40 @@ export default function Purchases() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {purchases.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 font-medium urdu-text">
-                    {p.invoiceNo}
-                  </td>
-                  <td className="px-4 py-3 urdu-text">
-                    {p.supplierName || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {formatDateShort(p.date)}
-                  </td>
-                  <td className="px-4 py-3 text-sm">{p.items.length}</td>
-                  <td className="px-4 py-3 font-semibold">
-                    {formatCurrency(p.total)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="text-blue-600 hover:text-blue-800 text-sm urdu-text"
-                      onClick={() => {
-                        setCurrentPurchase(p);
-                        setShowPrint(true);
-                      }}
-                    >
-                      🖨️ پرنٹ
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {purchases
+                .slice()
+                .sort((a, b) => b.date - a.date)
+                .map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3 font-medium urdu-text">
+                      {p.invoiceNo}
+                    </td>
+                    <td className="px-4 py-3 urdu-text">
+                      {p.supplierName || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {formatDateShort(p.date)}
+                    </td>
+                    <td className="px-4 py-3 text-sm urdu-text">
+                      {p.paymentType === "cash" ? "نقد" : "کریڈٹ"}
+                    </td>
+                    <td className="px-4 py-3 text-sm">{p.items.length}</td>
+                    <td className="px-4 py-3 font-semibold">
+                      {formatCurrency(p.total)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        className="text-blue-600 hover:text-blue-800 text-sm urdu-text"
+                        onClick={() => {
+                          setCurrentPurchase(p);
+                          setShowPrint(true);
+                        }}
+                      >
+                        🖨️ پرنٹ
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

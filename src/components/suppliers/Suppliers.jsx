@@ -14,8 +14,6 @@ export default function Suppliers() {
     address: "",
     balance: "",
   });
-
-  // Balance adjustment modal
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [balanceAmount, setBalanceAmount] = useState("");
@@ -162,7 +160,6 @@ export default function Suppliers() {
         </div>
       )}
 
-      {/* Balance Adjustment Modal */}
       {showBalanceModal && selectedSupplier && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -220,7 +217,6 @@ export default function Suppliers() {
         </div>
       )}
 
-      {/* Suppliers Table */}
       <div className="bg-white rounded-2xl shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -236,7 +232,7 @@ export default function Suppliers() {
                   پتہ
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
-                  بیلنس
+                  بیلنس (کریڈٹ)
                 </th>
                 <th className="px-4 py-3 text-sm font-semibold text-gray-600 urdu-text">
                   کل خریداری

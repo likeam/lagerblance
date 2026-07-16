@@ -22,9 +22,9 @@
 }
 
 .grid-card {
-  background: white;
+  background: #94b80b;
   border-radius: 16px;
-  padding: 16px;
+  padding: 8px;
   cursor: pointer;
   transition: all 0.25s ease;
   border: 2px solid transparent;
@@ -37,11 +37,29 @@
 }
 .grid-card.selected {
   border-color: #2563eb;
-  background: #eff6ff;
+  background: #3d8b0b;
+}
+.grid-card-subcategory {
+  background: #1e5bf2;
+  border-radius: 16px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.grid-card-subcategory:hover {
+  border-color: #2563eb;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
+  transform: scale(1.02);
+}
+.grid-card-subcategory.selected {
+  border-color: #072570;
+  background: #072570;
 }
 
 .product-card {
-  background: white;
+  background: #e98d77;
   border-radius: 14px;
   padding: 14px;
   cursor: pointer;

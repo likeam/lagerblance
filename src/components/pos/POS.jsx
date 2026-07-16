@@ -24,6 +24,7 @@ export default function POS() {
   const [showPrint, setShowPrint] = useState(false);
   const [currentSale, setCurrentSale] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentType, setPaymentType] = useState("cash"); // 'cash' or 'credit'
 
   // Auto-select walk-in client
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function POS() {
     }
   }, [clients]);
 
-  // Compute filtered products based on selection and search
+  // Compute filtered products
   const filteredProducts = useMemo(() => {
     let list = products;
     if (selectedSubcategory) {
@@ -62,7 +63,6 @@ export default function POS() {
     searchQuery,
   ]);
 
-  // Categories with product counts
   const categoryItems = useMemo(() => {
     return categories.map((c) => ({
       ...c,
@@ -76,7 +76,6 @@ export default function POS() {
     }));
   }, [categories, subcategories, products]);
 
-  // Subcategories for the selected category
   const subcategoryItems = useMemo(() => {
     if (!selectedCategory) return [];
     return subcategories
@@ -87,7 +86,6 @@ export default function POS() {
       }));
   }, [subcategories, selectedCategory, products]);
 
-  // Cart calculations
   const cartTotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   }, [cart]);
@@ -98,7 +96,12 @@ export default function POS() {
 
   const netTotal = cartTotal - discountAmount;
 
-  // Cart operations
+  // Total items in cart (sum of quantities)
+  const totalItems = useMemo(() => {
+    return cart.reduce((sum, item) => sum + item.qty, 0);
+  }, [cart]);
+
+  // Add to cart
   const addToCart = (product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
@@ -136,14 +139,12 @@ export default function POS() {
   const clearCart = () => {
     setCart([]);
     setDiscountPercent(0);
-    setSelectedClient(null);
     setPaymentAmount("");
-    // re-select walk-in
+    setPaymentType("cash");
     const walkin = clients.find((c) => c.id === "walkin") || clients[0];
     setSelectedClient(walkin || null);
   };
 
-  // Checkout
   const handleCheckout = async () => {
     if (cart.length === 0) {
       alert("کارٹ خالی ہے");
@@ -153,11 +154,22 @@ export default function POS() {
       alert("براہ کرم کلائنٹ منتخب کریں");
       return;
     }
-    const paid = parseFloat(paymentAmount) || netTotal;
-    if (paid < netTotal) {
-      alert("ادائیگی کی رقم کل سے کم ہے");
-      return;
+
+    let paid = parseFloat(paymentAmount) || 0;
+    if (paymentType === "cash") {
+      paid = netTotal;
+    } else {
+      // credit: paid = 0 or partial; we'll set paid = 0 for simplicity, but allow partial
+      if (paid < netTotal) {
+        // credit
+      } else {
+        // if they entered full amount, treat as cash
+      }
     }
+
+    // Ensure paid is not less than 0 and not more than total
+    if (paid < 0) paid = 0;
+    if (paid > netTotal) paid = netTotal;
 
     const invoiceNo = "INV-" + String(Date.now()).slice(-6);
     const sale = {
@@ -177,9 +189,11 @@ export default function POS() {
       discountAmount,
       total: netTotal,
       paid: paid,
+      paymentType: paymentType, // 'cash' or 'credit'
       date: Date.now(),
     };
     await dbAdd(STORES.SALES, sale);
+
     // Update stock
     for (const item of cart) {
       const prod = await dbGet(STORES.PRODUCTS, item.productId);
@@ -188,6 +202,16 @@ export default function POS() {
         await dbPut(STORES.PRODUCTS, prod);
       }
     }
+
+    // Update client balance if credit
+    if (paymentType === "credit") {
+      const client = await dbGet(STORES.CLIENTS, selectedClient.id);
+      if (client) {
+        const newBalance = (client.balance || 0) + netTotal;
+        await dbPut(STORES.CLIENTS, { ...client, balance: newBalance });
+      }
+    }
+
     setCurrentSale(sale);
     setShowPrint(true);
     await refreshAll();
@@ -207,11 +231,14 @@ export default function POS() {
     setCurrentSale(null);
   };
 
-  // ----- Print view -----
+  // Print view
   if (showPrint && currentSale) {
     return (
-      <div className="fixed inset-0 bg-white z-50 overflow-auto print-container">
-        <div className="max-w-2xl mx-auto p-8">
+      <div className="fixed inset-0 bg-[#94B80B] z-50 overflow-auto print-container">
+        <div
+          className="max-w-2xl mx-aut
+        o p-8"
+        >
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold urdu-text">📄 رسید / Invoice</h2>
             <p className="text-gray-500 urdu-text">
@@ -222,6 +249,14 @@ export default function POS() {
             </p>
             <p className="text-gray-500 urdu-text">
               کلائنٹ: {currentSale.clientName}
+            </p>
+            <p className="text-gray-500 urdu-text">
+              ادائیگی کی قسم:{" "}
+              {currentSale.paymentType === "cash" ? "نقد" : "کریڈٹ"}
+            </p>
+            <p className="text-gray-500 urdu-text">
+              کل اشیاء:{" "}
+              {currentSale.items.reduce((sum, item) => sum + item.qty, 0)}
             </p>
           </div>
           <div className="border-t border-b py-3 my-4">
@@ -295,14 +330,13 @@ export default function POS() {
     );
   }
 
-  // ----- Main POS UI -----
+  // Main POS UI
   return (
     <div className="flex gap-6 p-6">
-      {/* Left: Category/Subcategory/Product Grids stacked */}
       <div className="flex-1">
-        {/* Search Bar and Client Selector */}
-        <div className="mb-4 flex gap-3">
-          <div className="flex-1 relative">
+        {/* Search & Client */}
+        <div className="mb-4 flex gap-3 flex-wrap">
+          <div className="flex-1 relative min-w-[200px]">
             <input
               type="text"
               className="w-full px-5 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none urdu-text"
@@ -328,64 +362,55 @@ export default function POS() {
           </select>
         </div>
 
-        {/* Category Grid - always visible */}
+        {/* Category Grid */}
         <div className="mb-4">
           <h3 className="text-sm font-semibold text-gray-500 urdu-text mb-2">
             زمرہ جات
           </h3>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+          <div className="grid  grid-cols-6 sm:grid-cols-4 md:grid-cols-10 gap-3">
             {categoryItems.map((cat) => (
               <div
                 key={cat.id}
-                className={`grid-card text-center urdu-text ${selectedCategory === cat.id ? "selected" : ""}`}
+                className={`grid-card text-center  urdu-text ${selectedCategory === cat.id ? "selected" : ""}`}
                 onClick={() => {
-                  // Toggle: if same category, deselect; else select
                   setSelectedCategory((prev) =>
                     prev === cat.id ? null : cat.id,
                   );
-                  setSelectedSubcategory(null); // clear subcategory when category changes
+                  setSelectedSubcategory(null);
                 }}
               >
-                <div className="text-3xl mb-2">📂</div>
                 <div className="font-semibold text-base">{cat.name}</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {cat.productCount} پروڈکٹس
-                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Subcategory Grid - visible only if a category is selected */}
+        {/* Subcategory Grid */}
         {selectedCategory && (
           <div className="mb-4 fade-in">
             <h3 className="text-sm font-semibold text-gray-500 urdu-text mb-2">
               ذیلی زمرہ جات —{" "}
               {categories.find((c) => c.id === selectedCategory)?.name || ""}
             </h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-6 sm:grid-cols-4 md:grid-cols-10 gap-3">
               {subcategoryItems.map((sub) => (
                 <div
                   key={sub.id}
-                  className={`grid-card text-center urdu-text ${selectedSubcategory === sub.id ? "selected" : ""}`}
+                  className={`grid-card-subcategory text-center text-white urdu-text ${selectedSubcategory === sub.id ? "selected" : ""}`}
                   onClick={() => {
                     setSelectedSubcategory((prev) =>
                       prev === sub.id ? null : sub.id,
                     );
                   }}
                 >
-                  <div className="text-2xl mb-2">📁</div>
                   <div className="font-semibold text-base">{sub.name}</div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {sub.productCount} پروڈکٹس
-                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Product Grid - visible if subcategory selected OR search is active */}
+        {/* Product Grid */}
         {(selectedSubcategory || searchQuery.trim()) && (
           <div className="fade-in">
             <h3 className="text-sm font-semibold text-gray-500 urdu-text mb-2">
@@ -408,12 +433,11 @@ export default function POS() {
                     className="product-card urdu-text"
                     onClick={() => addToCart(prod)}
                   >
-                    <div className="text-2xl mb-1">📦</div>
                     <div className="font-semibold text-sm">{prod.name}</div>
                     <div className="text-blue-600 font-bold mt-1">
                       {formatCurrency(prod.price)}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-700">
                       اسٹاک: {prod.stock || 0}
                     </div>
                   </div>
@@ -423,7 +447,6 @@ export default function POS() {
           </div>
         )}
 
-        {/* If no category selected and no search, show a hint */}
         {!selectedCategory && !searchQuery.trim() && (
           <div className="text-center text-gray-400 urdu-text mt-8">
             براہ کرم زمرہ منتخب کریں یا تلاش کریں
@@ -431,8 +454,8 @@ export default function POS() {
         )}
       </div>
 
-      {/* Right: Cart - unchanged */}
-      <div className="w-96 bg-white rounded-2xl shadow-lg p-5 h-[calc(100vh-3rem)] sticky top-6 flex flex-col no-print">
+      {/* Cart */}
+      <div className="w-96 bg-green-400 rounded-2xl shadow-lg p-5 h-[calc(100vh-3rem)] sticky top-6 flex flex-col no-print">
         <h2 className="text-xl font-bold urdu-text mb-4">🛒 کارٹ</h2>
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           {cart.length === 0 ? (
@@ -478,6 +501,10 @@ export default function POS() {
           )}
         </div>
         <div className="border-t pt-4 space-y-3">
+          <div className="flex justify-between text-sm urdu-text">
+            <span>کل آئٹمز:</span>
+            <span>{totalItems}</span>
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 urdu-text">چھوٹ %</span>
             <input
@@ -502,20 +529,45 @@ export default function POS() {
             <span>کل:</span>
             <span className="text-blue-600">{formatCurrency(netTotal)}</span>
           </div>
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-gray-500 urdu-text">
+              ادائیگی کی قسم:
+            </span>
+            <select
+              className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white urdu-text"
+              value={paymentType}
+              onChange={(e) => setPaymentType(e.target.value)}
+            >
+              <option value="cash">نقد</option>
+              <option value="credit">کریڈٹ</option>
+            </select>
+          </div>
+          {paymentType === "cash" ? (
+            <div className="text-sm text-green-600 urdu-text">
+              کل رقم نقد ادا کی جائے گی
+            </div>
+          ) : (
+            <div className="text-sm text-orange-600 urdu-text">
+              رقم کریڈٹ پر ڈالی جائے گی
+            </div>
+          )}
           <div className="flex gap-2">
             <input
               type="number"
               className="flex-1 px-3 py-2 rounded-lg border border-gray-200 urdu-text"
-              placeholder="ادائیگی کی رقم"
+              placeholder="ادائیگی کی رقم (اختیاری)"
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
+              disabled={paymentType === "cash"}
             />
-            <button
-              className="px-3 py-2 bg-gray-100 rounded-lg text-sm urdu-text"
-              onClick={() => setPaymentAmount(String(netTotal))}
-            >
-              پورا
-            </button>
+            {paymentType === "cash" && (
+              <button
+                className="px-3 py-2 bg-gray-100 rounded-lg text-sm urdu-text"
+                onClick={() => setPaymentAmount(String(netTotal))}
+              >
+                پورا
+              </button>
+            )}
           </div>
           <div className="flex gap-3">
             <button
