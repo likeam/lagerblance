@@ -388,7 +388,7 @@ export default function POS() {
         {/* Subcategory Grid */}
         {selectedCategory && (
           <div className="mb-4 fade-in">
-            <h3 className="text-sm font-semibold text-gray-500 urdu-text mb-2">
+            <h3 className="text-sm font-semibold text-gray-600 urdu-text mb-2">
               ذیلی زمرہ جات —{" "}
               {categories.find((c) => c.id === selectedCategory)?.name || ""}
             </h3>
