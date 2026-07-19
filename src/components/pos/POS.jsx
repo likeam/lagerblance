@@ -234,7 +234,7 @@ export default function POS() {
   // Print view
   if (showPrint && currentSale) {
     return (
-      <div className="fixed inset-0 bg-[#94B80B] z-50 overflow-auto print-container">
+      <div className="fixed inset-0 bg-[#94B80B] z-60 overflow-auto print-container">
         <div
           className="max-w-2xl mx-aut
         o p-8"
