@@ -240,7 +240,7 @@ export default function POS() {
         o p-8"
         >
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold urdu-text">📄 رسید / Invoice</h2>
+            <h2 className="text-2xl font-bold urdu-text">Bill</h2>
             <p className="text-gray-500 urdu-text">
               نمبر: {currentSale.invoiceNo}
             </p>
